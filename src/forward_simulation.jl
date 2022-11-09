@@ -23,7 +23,7 @@ end
 """
     simulate_forward(::constant_rate, x₀::Union{T1, Array{T1,1}}, T::T2, P::ChemicalReactionProcess{T1}) where {T1<:Real, T2<:Real}
 
-Forward simulation starting from x₀, untime time 'T' of the process specified in 'P' when jump rates are constant (in time).
+Forward simulation starting from `x₀`, untime time `T` of the process specified in `P` when jump rates are constant (in time).
 """
 function simulate_forward(::constant_rate, x₀::Union{T1, Array{T1,1}}, T::T2, P::ChemicalReactionProcess{T1}) where {T1<:Real, T2<:Real}
     @assert T>0 "T must be positive"
@@ -46,7 +46,7 @@ struct conditional <: method end
 """
     simulate_forward(::conditional, x₀::Union{T1, Array{T1,1}}, xT, T::T2, P::ChemicalReactionProcess{T1}, d²::Function, η) where {T1<:Real, T2<:Real}
 
-Forward simulation of the guided process specified in 'P', starting from 'x₀' and with desired end state '(T, xT)'.
+Forward simulation of the guided process specified in `P`, starting from `x₀` and with desired end state `(T, xT)`.
 """
 function simulate_forward(::conditional, x₀::Union{T1, Array{T1,1}}, xT, T::T2, P::ChemicalReactionProcess{T1}, d²::Function, η) where {T1<:Real, T2<:Real}
     ℛ = P.ℛ
