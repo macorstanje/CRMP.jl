@@ -1,4 +1,4 @@
-using Documenter, .CRMP
+using Documenter, CRMP
 
 makedocs(
     modules = [CRMP],
