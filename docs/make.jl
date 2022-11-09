@@ -17,5 +17,8 @@ makedocs(
 )
 
 deploydocs(
-    repo = "github.com/macorstanje/CRMP.jl.git"
+    repo = "github.com/macorstanje/CRMP.jl.git",
+    target = "build",
+    deps = nothing,
+    make = nothing,
 )
