@@ -1,4 +1,4 @@
-# Networks
+# [Networks](@id networks)
 
 Various function for setting up chemical reaction networks and several well-known networks
 ```@meta
