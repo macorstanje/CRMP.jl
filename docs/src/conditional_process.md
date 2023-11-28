@@ -6,6 +6,8 @@ CurrentModule = CRMP
 ```
 
 ```@docs
+observation
+guiding_term_scaledBM
 dist²
 C
 condition_reaction
