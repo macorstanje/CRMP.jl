@@ -55,4 +55,4 @@ julia> loglikelihood_general_1obs(tto, xxo, GP, info)
 ``` 
 
 ### Extension to multiple observations
-For multiple observations, use the methods prescribed earlier, but then with an array of `partial_observation`s and an array of `a`. 
+For multiple observations, use the methods prescribed earlier, but then with an array of `partial_observation`s and an array of `a`.
