@@ -7,7 +7,7 @@ Library with functions for forward simulation of continuous-time chemical reacti
 ## Walkthrough for Birth-death process
 The birth death-process consists of the simple species set `𝒮 = {"Individuals"}`
 and the reactions `birth` and `death` with rates `birth_rate` and `death_rate`, respectively.
-```@julia-repl
+```julia-repl
 julia> using CRMP
 julia> birth = reaction( (t,x) -> x + 1 , birth_rate*x)
 julia> death = reaction( (t,x) -> x - 1 , death_rate*x)
@@ -24,24 +24,35 @@ For other built-in reaction process, see [networks](@ref networks).
 ### Forward simulation
 
 The rate functions are constant in time and thus we simulate forward given `x₀` and some final time `T` using
-```@julia-repl
+```julia-repl
 julia> tt, xx = simulate_forward(constant_rate(), x₀, T, P)
 ```
-We can plot the components using (dedicated plot function will be added to the library later)
-```@julia-repl
-julia> using Plots
-julia> plot(tt, map(x -> x[1], xx), label = P.𝒮[1], xlabel = "t", ylabel = "counts")
-julia> plot(tt, map(x -> x[2], xx), label = P.𝒮[2], xlabel = "t", ylabel = "counts")
+We can plot the components using 
+```julia-repl
+julia> plotprocess(tt, xx, P)
 ```
 
 ### Conditioned process
-If we have a desired end-state `(T,xT)` and latent variable `ϕ`, in the guided proposal framework often the diffusivity of the auxiliary process, we simulate a guided process via
-```@julia-repl
-CP = condition_process(P, xT, T, dist²(ϕ))
-tto, xxo = simulate_forward(conditional(), x₀, xT, T, CP, dist²(ϕ), 0.5)
+If we have a desired end-state `(T,xT)`, we can employ various guiding terms to find a guided process. See [Conditional processes](@ref conditional_process) for all of them. We demostrate the diffusion guiding term.
+```julia-repl
+julia> L = 1.0
+julia> eps = 1e-5
+julia> obs = partial_observation(T, xT, L, eps)
+julia> a = 10.0
+julia> GP = diffusion_guiding_term(obs, a, P)
+julia> info = filter_backward(GP)
+julia> tto, xxo = simulate_forward_monotone(x₀, GP, info)
 ```
-Here, `dist²(ϕ)` is a distance measure on the chemical reaction networks, currently set as `dist²(ϕ)(x,y) = |y-x|²/ϕ`. The `0.5` can be adjusted, this is the minimal desired acceptance rate of the thinning process when sampling reaction times.
+
 
 ### Likelihood computation
 
-This is currently still implemented locally, will follow soon ...
+For likelihood computation with 1 observation, the preferred method is the function `loglikelihood_general_1obs`. For multiple observations, LNA methods are not implemented yet. For poisson and diffusion guiding terms, use `loglikelihood(tto,xxo,GP,info)`
+
+Continuing the example:
+```julia-repl
+julia> loglikelihood_general_1obs(tto, xxo, GP, info)
+``` 
+
+### Extension to multiple observations
+For multiple observations, use the methods prescribed earlier, but then with an array of `partial_observation`s and an array of `a`. 

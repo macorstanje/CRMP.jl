@@ -183,7 +183,7 @@ function ode_ψGz_forward!(method, P::ChemicalReactionProcess, tt, (ψt, Gt, zt)
         tdir = 1
     )
     integrator = init(prob, method, callback=callback, save_everystep = true, reltol = 1e-6,)
-    DifferentialEquations.solve(integrator)
+    DifferentialEquations.solve!(integrator)
 
     ss = saved_values.saveval
     for i in eachindex(ss)
@@ -194,20 +194,51 @@ function ode_ψGz_forward!(method, P::ChemicalReactionProcess, tt, (ψt, Gt, zt)
     ψt, Gt, zt
 end
 
+"""
+    LNA
+
+general supertype for different LNA algorithms
+"""
 abstract type LNA <: Guided_Process end
 # abstract type pois  end
 
+"""
+    LNAR
 
+LNA method with restart, guided rates are determined through solving 
+a system of ODEs at each reaction time. 
+```julia-repl
+julia> obs = partial_observation(1.0, [2, 5], [1 0 0 ; 0 1 0], 0.05)
+julia> LNAR(obs, GTT(1.0, 1.0, 1.0, 1.0))
+````
+"""
 struct LNAR <: LNA # with restart
     obs::partial_observation
     P::ChemicalReactionProcess
 end
 
+"""
+    LNAR_death
+
+LNA method with restart, closed form solution to the ODEs 
+specifically implemented for the death process. Works the same as `LNAR`
+"""
 struct LNAR_death <: LNA # with restart, specifically for death process
     obs::partial_observation
     P::ChemicalReactionProcess 
 end
 
+"""
+    LNA_nR
+
+LNA method without restart. requires fillin ψt, Gt, and zt on a grid before use
+```julia-repl
+julia> obs = partial_observation(1.0, [2, 5], [1 0 0 ; 0 1 0], 0.05)
+julia> time_grid = 0.0:0.001:1.0
+julia> GP = LNA_nR(obs, time_grid, GTT(1.0, 1.0, 1.0, 1.0))
+julia> x₀ = [1, 15, 20]
+julia> fill_grid!(GP, x₀)
+"""
 mutable struct LNA_nR <: LNA # no restart
     obs::partial_observation
     tt
@@ -218,6 +249,16 @@ mutable struct LNA_nR <: LNA # no restart
     LNA_nR(obs, tt, P) = new(obs, tt, P) 
 end
 
+"""
+    diff_death
+
+specific guiding term for the death process with a diffusion guiding term
+```julia-repl
+julia> obs = partial_observation(1.0, 35, 1.0, 0.05)
+julia> a = 15.0
+julia> GP = diff_death(obs, a, PureDeathProcess_constantrate(0.5))
+```
+"""
 struct diff_death <: LNA # CHANGE, WORKS FINE FOR NOW 
     obs::partial_observation
     a::Float64 # diffusion coefficient of auxiliary process
@@ -225,6 +266,16 @@ struct diff_death <: LNA # CHANGE, WORKS FINE FOR NOW
 end
 
 abstract type pois <: Guided_Process end
+
+"""
+    pois_death
+
+specific guiding term for the death process with a poisson guiding term
+```julia-repl
+julia> obs = julia> obs = partial_observation(1.0, 35, [nothing, 1.0], 0.05)
+julia> GP = pois_death(obs, PureDeathProcess_constantrate(0.5))
+```
+"""
 struct pois_death <: pois
     obs::partial_observation_poisson
     P::ChemicalReactionProcess
@@ -242,6 +293,7 @@ getC(P::T) where {T<:Union{LNA,pois}} = getm(P) == 1 ? getϵ(P.obs) : SMatrix{ge
 """
     guiding terms
 """
+
 function logp(t, x, type::LNAR_death)
     v, T, c = getv(type), gett(type), type.P.ℛ.λ(1.0,1)
     ect = exp(-c*(T-t))
@@ -282,7 +334,7 @@ function logp(t, x, type::LNAR)
 end
 
 function fill_grid!(type::LNA_nR, x₀)
-    L, v, T, C, P, d = getL(type), getv(type), gett(type), getC(type), type.P, getd(type.P)
+    P, d = type.P, getd(type.P)
     ψ = SMatrix{d,d,Float64}(zeros(d,d)) ; G = SMatrix{d,d,Float64}(I) ; z = ℝ{d}(x₀)
     tt = type.tt
     ψt = [ψ for i in eachindex(tt)]
@@ -296,10 +348,10 @@ function fill_grid!(type::LNA_nR, x₀)
 end
 
 function logp(t, x, type::LNA_nR)
-    L, v, C, d = getL(type), getv(type), gett(type), getC(type), type.P, getd(type.P)
+    L, v, C, d, tt = getL(type), getv(type), getC(type), getd(type.P), type.tt
     ψt, Gt, zt = type.ψt, type.Gt, type.zt
     
-    ind = findmin(abs(tt .- t))[2]
+    ind = findmin(abs.(tt .- t))[2]
     GTt = Gt[end]*inv(Gt[ind])
     ψTt = Gt[ind]*(ψt[end]-ψt[ind])*Gt[ind]'
     
@@ -376,8 +428,14 @@ function simulate_forward_monotone(x₀, type::TP, info) where {TP<:Union{LNA, p
     t, x = 0.0, x₀
     tt, xx = [t], [x]
 
-    diff(ℓ, t, x) = FiniteDifferences.central_fdm(2, 1)(s -> log_guiding_term(info, type)(ℓ,s,x) , t)
-    # diff(ℓ, t, x) = central_fdm(5,1)(s -> log_guiding_term(type)(ℓ,s,x), t)
+    function diff(ℓ,t,x) 
+        if getd(type) == 1
+           return 1.0 # x == getv(type) ? 1.0 : 1.0 # diff always positive, value not important
+        else
+            return FiniteDifferences.central_fdm(2, 1)(s -> log_guiding_term(info, type)(ℓ,s,x) , t)
+        end
+    end
+    # diff(ℓ, t, x) = ForwardDiff.derivative(s -> log_guiding_term(info, type)(ℓ,s,x), t)
     while t < T
         Δ = [10e6 for ℓ in ℛ] # initialized reaction times for all reactions
         for (i, ℓ) in enumerate(ℛ)

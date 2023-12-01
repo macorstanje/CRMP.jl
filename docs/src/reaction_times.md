@@ -10,5 +10,8 @@ method
 constant_rate
 decreasing_rate
 increasing_rate
+thinning
+Gillespie
 gettime
+setδ
 ```

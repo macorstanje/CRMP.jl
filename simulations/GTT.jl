@@ -5,9 +5,10 @@ using LinearAlgebra
 using BlockArrays
 using ProgressMeter
 using Statistics
-using Bridge
+using Random
 extractcomp(a, i) = map(x -> x[i], a)
 Plots.scalefontsizes(2)
+Random.seed!(61)
 
 """
     Bridge, one (partial) observation
@@ -22,6 +23,7 @@ T = 1.0
 x₀ = [1, 50, 10]
 P = GTT(κ₁, κ₂, dₘ, dₚ) # Original process
 tt, xx = simulate_forward(constant_rate(), x₀, T, P)
+β(t,x,P::ChemicalReactionProcess) = sum([ℓ.λ(t,x)*ℓ.ξ*ℓ.ξ' for ℓ in P.ℛ])
 plotprocess(tt, xx, P)
 
 # CLE approximation
@@ -34,7 +36,6 @@ struct CLE <: ContinuousTimeProcess{ℝ{3}}
 end
 Bridge.b(t, x, M::CLE) = sum([ℓ.λ(0.0, x)*ℓ.ξ for ℓ in M.P.ℛ])
 Bridge.σ(t, x, M::CLE) = transpose(mapreduce(permutedims, vcat, [sqrt(max(ℓ.λ(0.0,x),0.))*ℓ.ξ for ℓ in M.P.ℛ]))
-β(t,x,P::ChemicalReactionProcess) = sum([ℓ.λ(t,x)*ℓ.ξ*ℓ.ξ' for ℓ in P.ℛ])
 
 W = sample(0.0:0.01:1.0, Wiener{ℝ{4}}())
 X = solve(Euler(),Float64.(x₀), W, CLE(P))
@@ -65,7 +66,7 @@ fig
 # Save (partial)observation at T=1.0, C = 0.005LaL'
 L = [ 0 1 0 ; 0 0 1]
 obs = partial_observation(T, L*xx[end], L, 1e-5)
-a = β(T,xx[end],P)# Bridge.σ(T, xx[end], CLE(P))*Bridge.σ(T,xx[end],CLE(P))'
+a = β(0.0,x₀,P)#diagm([0.0, 1.0, 2.5])*β(T,xx[end],P)# Bridge.σ(T, xx[end], CLE(P))*Bridge.σ(T,xx[end],CLE(P))'
 #tto, xxo = simulate_forward(x₀, Guided_Process(obs, a, P))
 GP = diffusion_guiding_term(obs,a,P)
 info = filter_backward(GP)
@@ -80,12 +81,42 @@ plot!(plt, [ttm], [xxm[2]], seriestype = :scatter, markersize = 15, label = "Obs
 #savefig(plt, "GTT_15Short.png")
 
 
+# GP_LNA = LNA_nR(obs, 0:0.001:T, P)
+# @time fill_grid!(GP_LNA, x₀)
 ttoo, xxoo = [tto], [xxo]
-K = 500
+aa = [a]
+# @time tto_LNA, xxo_LNA = simulate_forward_monotone(x₀, GP_LNA, info)
+# ttoo_LNA, xxoo_LNA = [tto_LNA], [xxo_LNA]
+ll = loglikelihood_general_1obs(tto, xxo, GP, info)
+# ll_LNAR = loglikelihood_general_1obs(tto_LNA, xxo_LNA, GP_LNA, info)
+K = 000
 p = Progress(K)
+acc = Int64.(zeros(K))
+# acc_LNAR = Int64.(zeros(K))
 for k in 1:K
-    tto, xxo = simulate_forward_monotone(x₀, GP, info)
+    a_prop = a .+ diagm([0.0, 2.5*randn(), 5.0*randn()])
+    GP_prop = diffusion_guiding_term(obs,a_prop,P)
+    info_prop = filter_backward(GP_prop)
+    tto_prop, xxo_prop = simulate_forward_monotone(x₀, GP_prop, info_prop)
+    # tto_LNAR_prop, xxo_LNAR_prop = simulate_forward_monotone(x₀, GP_LNAR, info)
+    ll_prop = loglikelihood_general_1obs(tto_prop, xxo_prop, GP_prop, info_prop)
+    # ll__LNAR_prop = loglikelihood_general_1obs(tto_LNAR_prop, xxo_LNAR_prop, GP_LNAR, info)
+    if log(rand()) <= ll_prop - ll 
+        tto, xxo = tto_prop, xxo_prop
+        ll = ll_prop
+        a = a_prop
+        GP = GP_prop
+        info = info_prop
+        acc[k] = 1
+    end
+    # if log(rand()) <= ll_LNAR_prop - ll_LNAR
+    #     tto_LNAR, xxo_LNAR = tto_LNAR_prop, xxo_LNAR_prop
+    #     ll_LNAR = ll_LNAR_prop
+    #     acc_LNAR[k] = 1
+    # end
     push!(ttoo, tto) ; push!(xxoo, xxo)
+    push!(aa, a)
+    # push!(ttoo_LNA, tto_LNA) ; push!(xxoo_LNA, xxo_LNA)
     next!(p)
 end
 
@@ -115,16 +146,44 @@ for j in 2:nr_species(P)
             size = (1800, 900), 
             dpi = 300)
 end
-for k in (0*K+1):100:1*K
-    plot!(plt, ttoo[k], extractcomp(xxoo[k], 2), label = false, linetype=:steppost, color = theme_palette(:auto)[2], alpha = 0.7)
-    plot!(plt, ttoo[k], extractcomp(xxoo[k], 3), label = false, linetype=:steppost, color = theme_palette(:auto)[3], alpha = 0.7)
+for k in findall(x -> x==1, acc)[end-10:end]
+    plot!(plt, ttoo[k], extractcomp(xxoo[k], 2), label = false, linetype=:steppost, color = theme_palette(:auto)[2], alpha = 0.3)
+    plot!(plt, ttoo[k], extractcomp(xxoo[k], 3), label = false, linetype=:steppost, color = theme_palette(:auto)[3], alpha = 0.3)
 end
 plot!(plt, [ttm], [xxm[1]], seriestype = :scatter, markersize = 15, label = "Observation of $(P.𝒮[2])", color = theme_palette(:auto)[2])
 plot!(plt, [ttm], [xxm[2]], seriestype = :scatter, markersize = 15, label = "Observation of $(P.𝒮[3])", color = theme_palette(:auto)[3])
 plt
 savefig(plt, "GTT-obs-multipletracectories.png")
 
-a2 = collect(10:5:100)
+
+a2_trace = map(x -> x[2,2], aa)
+a3_trace = map(x -> x[3,3], aa)
+
+p1 = plot(a2_trace, linetype=:steppost, linewidth = 5.0, 
+        margin = 10Plots.mm, 
+        xlabel = "k", 
+        ylabel = "a₂", 
+        xguidefontsize = 16, yguidefontsize = 16,
+        xtickfontsize = 16, ytickfontsize = 16,
+        legend=:topleft, legendfotsize = 16, 
+        size = (1800, 900), 
+        dpi = 300)
+p2 = plot(a3_trace, linetype=:steppost, linewidth = 5.0, 
+        margin = 10Plots.mm, 
+        xlabel = "k", 
+        ylabel = "a₂", 
+        xguidefontsize = 16, yguidefontsize = 16,
+        xtickfontsize = 16, ytickfontsize = 16,
+        legend=:topleft, legendfotsize = 16, 
+        size = (1800, 900), 
+        dpi = 300)
+plot(p1,p2,layout = (2,1))
+
+
+
+
+
+        a2 = collect(10:5:100)
 a3 = collect(30:5:50)
 n2 = length(a2); n3 = length(a3)
 mat = zeros(n2,n3)

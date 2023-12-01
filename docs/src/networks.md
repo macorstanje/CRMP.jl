@@ -12,8 +12,12 @@ ChemicalReactionProcess
 nr_species
 nr_reactions
 PoissonProcess_constantrate
+PureDeathProcess_constantrate
 BirthDeathProcess
 GTT
+Schlogl
+AR
 viral_infection
 enzyme_kinetics
+lotka_volterra
 ```

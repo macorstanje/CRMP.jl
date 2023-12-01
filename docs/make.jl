@@ -12,6 +12,8 @@ makedocs(
             "Reaction times" => "reaction_times.md",
             "Forward simulation" => "forward_simulation.md",
             "Conditional process" => "conditional_process.md"
+            "LNA" => "LNA.md"
+            "Likelihood" => "likelihood.md"
         ]
     ]
 )

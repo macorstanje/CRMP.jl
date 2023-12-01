@@ -8,5 +8,5 @@ CurrentModule = CRMP
 ```@docs
 next_jump
 simulate_forward
-conditional
+simulate_forward_monotone
 ```

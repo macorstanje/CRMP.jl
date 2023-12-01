@@ -20,7 +20,11 @@ function next_jump(::constant_rate, t::Real, x::Union{T, Array{T,1}}, P::Chemica
     return time, next_reaction
 end
 
+"""
+    next_jump(::Gillespie, t::Real, x::Union{T, Array{T,1}}, P::ChemicalReactionProcess{T}) where {T<:Real}
 
+    If the process is of constant (in time) rate, uses Gillespie's algorithm.
+"""
 function next_jump(::Gillespie, t::Real, x::Union{T, Array{T,1}}, P::ChemicalReactionProcess{T}) where {T<:Real}
     ℛ = reaction_array(P)
     λ₀ = sum([ℓ.λ(t,x) for ℓ in ℛ])
@@ -38,6 +42,7 @@ function next_jump(::Gillespie, t::Real, x::Union{T, Array{T,1}}, P::ChemicalRea
     next_reaction = ℛ[sample(1:length(ℛ), Weights([ℓ.λ(t,x)/λ₀ for ℓ in ℛ]))]
     return time, next_reaction
 end
+
 """
     simulate_forward(::constant_rate, x₀::Union{T1, Array{T1,1}}, T::T2, P::ChemicalReactionProcess{T1}) where {T1<:Real, T2<:Real}
 
@@ -103,9 +108,9 @@ function simulate_forward(x₀, GP::Guided_Process, info)
 end
 
 """
-    simulate_forward_monotone(x₀, GP::Guided_Process, info)
+    simulate_forward_monotone(x₀, GP::diffusion_guiding_term{T}, info) where {T}
 
-Currently the main simulation method. uitinizes the δ
+Currently the main simulation method for diffusion guiding terms. uitinizes the δ
 """
 function simulate_forward_monotone(x₀, GP::diffusion_guiding_term{T}, info) where {T}
     ℛ = reaction_array(GP.P) ; n = getn(GP) ; d = getd(GP) ; times = gett(GP)
@@ -142,6 +147,12 @@ function simulate_forward_monotone(x₀, GP::diffusion_guiding_term{T}, info) wh
     return tt, xx
 end
 
+"""
+    simulate_forward_monotone(x₀, GP::poisson_guiding_term{T}, info) where {T}
+
+Currently the main simulation method for diffusion guiding terms. uitinizes the δ
+Assumes the last components are the monotone components.
+"""
 function simulate_forward_monotone(x₀, GP::poisson_guiding_term{T}, info) where {T}
     ℛ = reaction_array(GP.P) ; n = getn(GP) ; d = getd(GP) ; times = gett(GP) ; Y = poisson_terms(GP) ; Z = d-Y
     t,x = 0.0, x₀

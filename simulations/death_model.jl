@@ -585,6 +585,7 @@ Proof of concept for death process
 """
 # Given a death process, x₀ - X(T) ∣ X(0) = x₀ ~ Pois(cT). 
 # Let q(v) = (cT)^{x₀-v}/(x₀-v)! exp(-cT) be the distribution of X(T)∣ X(0)=x₀
+Random.seed!(61)
 T = 1.0
 x₀ = 50
 c = 0.5
@@ -703,34 +704,34 @@ end
 
 # guided_estimates_LNA, estimates_δ_LNA, SG_estimates_δ, SG_estimates_g, likelihood_g_LNA, ttoo_δ_LNA, xxoo_δ_LNA, ttoo_g_LNA, xxoo_g_LNA, v_values= do_stuff(nr_draws_q,nr_processes)
 
-map(xx -> xx[end], xxoo_g)
+# map(xx -> xx[end], xxoo_g)
 
-# V = draw_q()
-# tto_δ, xxo_δ = simulate_forward_monotone(x₀, LNAR_death(L,V,T,C,P))
-# tto_g, xxo_g = CRMP.simulate_forward(Gillespie(), x₀, T, condition_process(P, guiding_term(GP_LNAR)))
-m_g, m_δ = zeros(1000), zeros(1000)
-kk = []
-for i in 1:1000
-    k = rand(1:1:length(21:1:40)*nr_draws_q)
-    m_g[i] += exp(loglikelihood_direct(ttoo_g_LNA[k],xxoo_g_LNA[k], LNAR_death(v = v_values[k], P = P)))/1000
-    m_δ[i] += exp(loglikelihood_direct(ttoo_δ_LNA[k],xxoo_δ_LNA[k], LNAR_death(v = v_values[k], P = P)))/1000
-    push!(kk,k)
-end
-println(mean(m_g)) ; println(mean(m_δ))
+# # V = draw_q()
+# # tto_δ, xxo_δ = simulate_forward_monotone(x₀, LNAR_death(L,V,T,C,P))
+# # tto_g, xxo_g = CRMP.simulate_forward(Gillespie(), x₀, T, condition_process(P, guiding_term(GP_LNAR)))
+# m_g, m_δ = zeros(1000), zeros(1000)
+# kk = []
+# for i in 1:1000
+#     k = rand(1:1:length(21:1:40)*nr_draws_q)
+#     m_g[i] += exp(loglikelihood_direct(ttoo_g_LNA[k],xxoo_g_LNA[k], LNAR_death(v = v_values[k], P = P)))/1000
+#     m_δ[i] += exp(loglikelihood_direct(ttoo_δ_LNA[k],xxoo_δ_LNA[k], LNAR_death(v = v_values[k], P = P)))/1000
+#     push!(kk,k)
+# end
+# println(mean(m_g)) ; println(mean(m_δ))
 
-k = kk[findall(x -> isinf(x), m_g)[11]]#rand(1:1:length(21:1:40)*nr_draws_q)
-p1 = plotprocess(ttoo_g_LNA[k],xxoo_g_LNA[k],P)
-p2 = plotprocess(ttoo_δ_LNA[k],xxoo_δ_LNA[k],P)
-plot!(p1, [T], [v_values[k]], seriestype = :scatter, markersize = 10, label = "v", legend = :topright)
-plot!(p2, [T], [v_values[k]], seriestype=:scatter, markersize = 10, label = "v", legend = :topright)
-println(loglikelihood_direct(ttoo_g_LNA[k],xxoo_g_LNA[k], LNAR_death(v = v_values[k],P=P)))
-println(loglikelihood_direct(ttoo_δ_LNA[k],xxoo_δ_LNA[k], LNAR_death(v = v_values[k], P=P)))
-plot(p1,p2,layout=(2,1), plot_title = "Upper: SG, lower: δ")
-
-
+# k = kk[findall(x -> isinf(x), m_g)[11]]#rand(1:1:length(21:1:40)*nr_draws_q)
+# p1 = plotprocess(ttoo_g_LNA[k],xxoo_g_LNA[k],P)
+# p2 = plotprocess(ttoo_δ_LNA[k],xxoo_δ_LNA[k],P)
+# plot!(p1, [T], [v_values[k]], seriestype = :scatter, markersize = 10, label = "v", legend = :topright)
+# plot!(p2, [T], [v_values[k]], seriestype=:scatter, markersize = 10, label = "v", legend = :topright)
+# println(loglikelihood_direct(ttoo_g_LNA[k],xxoo_g_LNA[k], LNAR_death(v = v_values[k],P=P)))
+# println(loglikelihood_direct(ttoo_δ_LNA[k],xxoo_δ_LNA[k], LNAR_death(v = v_values[k], P=P)))
+# plot(p1,p2,layout=(2,1), plot_title = "Upper: SG, lower: δ")
 
 
-loglikelihood_SG(ttoo_g[2], xxoo_g[2], GP_LNAR)
+
+
+# loglikelihood_SG(ttoo_g[2], xxoo_g[2], GP_LNAR)
 
 # p1 = bar(vals, q.(vals), size = (1800,1600), normalize = true, label = "q", legend = :topleft)
 # # p2 = bar(vals, guided_estimates_LNA, size = (1800,1600),label ="guided estimates, SG forward simulation", legend=:topleft)
@@ -740,9 +741,15 @@ loglikelihood_SG(ttoo_g[2], xxoo_g[2], GP_LNAR)
 # p6 = bar(vals,SG_estimates_δ, size = (1800,1600), label = "guided estimates, δ forward simulation, SG",  legend = :topleft)
 # plot(p1,p2,p5,p3,p6,layout = (3,2), plot_title = "LNA guiding term")
 
-p1 = bar(vals[2:end], correct_LNA[2:end]./total_trajs[2:end], size = (1800,1600), label ="LNA", legend=:topright, xlabel = "k", ylabel = "percentage correct", margin = 10Plots.mm)
-p2 = bar(vals[2:end], correct_diff[2:end]./total_trajs[2:end], size = (1800,1600), label ="Diffusion guiding term", legend=:topright, xlabel = "k", ylabel = "percentage correct", margin = 10Plots.mm)
-p3 = bar(vals[2:end], correct_P[2:end]./total_trajs[2:end], size = (1800,1600), label ="Poisson guidng term", legend=:topright, xlabel = "k", ylabel = "percentage correct", margin = 10Plots.mm)
+p1 = bar(vals[1:end], correct_LNA[1:end]./total_trajs[1:end], 
+            size = (1800,1600), label ="LNA", legend=:topright, yaxis = (0.0,1.0),
+            xlabel = "k", ylabel = "percentage correct", margin = 10Plots.mm)
+p2 = bar(vals[1:end], correct_diff[1:end]./total_trajs[1:end], yaxis = (0.0,1.0),
+            size = (1800,1600), label ="Diffusion guiding term", legend=:topright, 
+            xlabel = "k", ylabel = "percentage correct", margin = 10Plots.mm)
+p3 = bar(vals[1:end], correct_P[1:end]./total_trajs[1:end], yaxis = (0.0,1.0),
+            size = (1800,1600), label ="Poisson guidng term", legend=:topright, 
+            xlabel = "k", ylabel = "percentage correct", margin = 10Plots.mm)
 plt = plot(p1,p2, p3, layout = (3,1))
 savefig(plt, "perc_correct.png")
 
@@ -766,7 +773,23 @@ p4 = bar(vals, estimates_δ_P, size = (1800,1600), label = "Poisson guiding term
 plt = plot(p1,p2,p3,p4, layout = (4,1))
 savefig(plt, "density_estimates.png")
 
-bar(unique(v_samples),[mean(map(x -> x != 0.0, likelihood_g_LNA[:,i] )) for i in 1:N])
+p1 = plot(vals, estimates_δ_LNA, linetype = :steppost, 
+            size = (1800,1600), label = "LNA guiding term",  margin = 10Plots.mm,
+            legend = :topleft, xlabel = "k", ylabel = "p̂(k)", linewidth = 5.5)
+plot!(p1, vals, q.(vals), linetype  = :steppost, label = "q", linestyle = :dash, linewidth = 2.5)
+plot!(p1, vals, estimates_δ_LNA .- q.(vals), label = "difference" , linetype = :steppost, fillrange = 0.0, fillalpha = 0.7)
+p2 = plot(vals, estimates_δ_diff, linetype = :steppost, 
+            size = (1800,1600), label = "Diffusion guiding term",  margin = 10Plots.mm,
+            legend = :topleft, xlabel = "k", ylabel = "p̂(k)", linewidth = 5.5)
+plot!(p2, vals, q.(vals), linetype  = :steppost, label = "q", linestyle = :dash, linewidth = 2.5)
+plot!(p2, vals, estimates_δ_diff .- q.(vals), label = "difference" , linetype = :steppost, fillrange = 0.0, fillalpha = 0.7)
+p3 = plot(vals, estimates_δ_P, linetype = :steppost, 
+            size = (1800,1600), label = "Poisson guiding term",  margin = 10Plots.mm,
+            legend = :topleft, xlabel = "k", ylabel = "p̂(k)", linewidth = 5.5)
+plot!(p3, vals, q.(vals), linetype  = :steppost, label = "q", linestyle = :dash, linewidth = 2.5)
+plot!(p3, vals, estimates_δ_P .- q.(vals), label = "difference" , linetype = :steppost, fillrange = 0.0, fillalpha = 0.7)
+plt = plot(p1,p2,p3,layout = (3,1))
+savefig(plt, "density_estimates.png")
 
 
 ssq_error_LNA = sum((q.(vals) .- estimates_δ_LNA).^2)

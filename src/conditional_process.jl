@@ -1,20 +1,3 @@
-# """
-#     observation{T::Union{Real, AbstractArray{Real, 1}}}
-
-# An observation `x` at time `t`. Use
-# ```julia-repl
-# julia> obs = observation(1.0, [2, 5, 1])
-# julia> gett(obs) # returns 1.0
-# julia> getx(obs) # returns [2, 5, 1]
-# ```
-# """
-# struct observation{T}
-#     t::Float64
-#     x::T
-# end
-# gett(obs::observation{T}) where {T} = obs.t
-# getx(obs::observation{T}) where {T} = obs.x
-
 """
     partial_observation{T::Union{Real, AbstractArray{Real, 1}}}
 
@@ -44,6 +27,28 @@ getϵ(obs::partial_observation{T}) where {T} = obs.ϵ
 getm(obs::partial_observation{T}) where {T} = length(getv(obs))
 getd(obs::partial_observation{T}) where {T} = typeof(obs.L) <: Union{Matrix, SMatrix} ? size(obs.L)[2] : 1
 
+
+"""
+    partial_observation_poisson{T::Union{Real, AbstractArray{Real, 1}}}
+
+A partial observation for a process with a monotone component 
+Assume an observation `v = LX(t)` with `L`` of the form `[L₁ 0 ; 0 L₂]`. 
+`L₂` for the monotone component, 
+Use:
+
+```julia-repl
+julia> obs = partial_observation_poisson(1.0, [2, 5], [ [1 0], [1] ],  0.05)
+julia> gett(obs) # returns 1.0
+julia> getv(obs) # returns [2, 5]
+julia> getL(obs) # returns [1 0 0 ; 0 0 1]
+julia> getL₁(obs)# returns [1 0] 
+julia> getL₂(obs)# returns [1]
+julia> getϵ(obs) # returns 0.05
+julia> getm(obs) # returns 2
+julia> getd(obs) # returns 3
+
+```
+"""
 struct partial_observation_poisson{T}
     t::Float64
     v::T
@@ -94,8 +99,9 @@ function getd(obs::partial_observation_poisson{T}) where {T}
     return Y+Z
 end
 
+abstract type Guided_Process end
 """
-    Guided_Process
+    diffusion_guiding_term{T}
 
 Guided process through array of partial observations `obs`, with an array ``d \\times d``-matrices stored in 
 `a` and an original `ChemicalReactionProcess` `P`. 
@@ -103,10 +109,9 @@ Guided process through array of partial observations `obs`, with an array ``d \\
 ```julia-repl
 # Guided GTT process for one partial observation at time 1.0 using a=I
 julia> partial_obs = [partial_observation(1.0, [2, 5], [1 0 0 ; 0 1 0], 0.05)]
-julia> GP = Guided_Process( partial_obs , [ [1 0 0 ; 0 1 0 ; 0 0 1] ] , GTT(κ₁,κ₂,dₚ,dₘ) )
+julia> GP = diffusion_guiding_term( partial_obs , [ [1 0 0 ; 0 1 0 ; 0 0 1] ] , GTT(κ₁,κ₂,dₚ,dₘ) )
 ```
 """
-abstract type Guided_Process end
 struct diffusion_guiding_term{T} <: Guided_Process
     obs::Union{partial_observation{T}, Array{partial_observation{T},1}}
     a::Union{Matrix{Float64}, Array{Matrix{Float64},1}, Float64, Array{Float64,1}}
@@ -343,7 +348,7 @@ filter_backward(GPP::poisson_guiding_term) = filter_backward(GP(GPP))
 # end
 
 """
-    log_guiding_term(info, GP::Guided_Process)
+    log_guiding_term(info, GP::diffusion_guiding_term)
 
 Returns a function ``(ℓ, t, x) \\mapsto log h̃(t,x+ξ_ℓ) - log h̃(t,x)``. 
 `info` should be the quadruple `(H, F, LaL⁻¹ , LC⁻¹)` that results from `filter_backward`. 
@@ -379,6 +384,11 @@ function log_guiding_term(info, GP::diffusion_guiding_term)
     end
 end
 
+"""
+    log_guiding_term_poisson_only(GPP::poisson_guiding_term)
+
+Returns the log-guiding term as a function of `(ℓ,t,x)` for only poisson components
+"""
 function log_guiding_term_poisson_only(GPP::poisson_guiding_term)
     function pois_part(ℓ,t,x) 
         ξ = typeof(ℓ.ξ) <: Real ? ℓ.ξ : ℓ.ξ[end]
@@ -463,6 +473,11 @@ function log_guiding_term(info, GPP::poisson_guiding_term)
     return (ℓ,t,x) -> SDE_part(ℓ,t,x) + pois_part(ℓ,t,x)
 end
 
+"""
+    guiding_term(info, GP::T) where {T<:Guided_Process}
+
+exp of the log guiding terms
+"""
 guiding_term(info, GP::T) where {T<:Guided_Process} = (ℓ,t,x) -> exp(log_guiding_term(info, GP)(ℓ,t,x))
 
 

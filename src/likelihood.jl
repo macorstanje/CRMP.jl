@@ -198,9 +198,9 @@ end
 
 
 """
-    loglikelihood_general_1obs
+    loglikelihood_general_1obs(tt,xx, GP::T, info) where {T<:Guided_Process}
 
-General likelihood computation, only dependent on guiding term, should be the same
+General log-likelihood computation, only dependent on guiding term, main method used
 """
 function loglikelihood_general_1obs(tt,xx, GP::T, info) where {T<:Guided_Process}
     ℛ = reaction_array(GP.P) ; N = length(tt)
@@ -224,6 +224,11 @@ function loglikelihood_general_1obs(tt,xx, GP::T, info) where {T<:Guided_Process
     return out
 end
 
+"""
+    likelihood_general_1obs(tt,xx, GP::T, info) where {T<:Guided_Process}
+
+General likelihood computation, only dependent on guiding term, main method used
+"""
 likelihood_general_1obs(tt,xx, GP::T, info) where {T<:Guided_Process} = exp(loglikelihood_general_1obs(tt,xx, GP, info))
 
 function find_reaction(x, y, P::ChemicalReactionProcess)
@@ -231,4 +236,9 @@ function find_reaction(x, y, P::ChemicalReactionProcess)
     return ℛ[findall(ℓ -> ℓ.ξ == y-x, ℛ)][1]
 end
 
+"""
+    iscorrect_1obs(GP::T, tt, xx) where {T<:Guided_Process}
+
+Checks whether LX(T) = v, returns a boolean. 
+"""
 iscorrect_1obs(GP::T, tt, xx) where {T<:Guided_Process} = (getL(GP)*xx[end] == getv(GP))

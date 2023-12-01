@@ -185,11 +185,11 @@ function gettime(::thinning, ℓ::reaction, t, x::Union{T, Array{T,1}}, log_guid
     end
 end
 
-"""
-    next_reaction(t,x, GP::Guided_Process, info)
+# """
+#     next_reaction(t,x, GP::Guided_Process, info)
 
-Returns (ℓ,τ), the next reaction and the corresponding reaction time. 
-"""
+# Returns (ℓ,τ), the next reaction and the corresponding reaction time. 
+# """
 # function next_reaction(t,x, GP::Guided_Process, info)
 #     ℛ = GP.P.ℛ
 #     (H,F,LaL⁻¹,LC⁻¹) = info
