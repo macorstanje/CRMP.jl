@@ -291,7 +291,7 @@ getC(P::T) where {T<:Union{LNA,pois}} = getm(P) == 1 ? getϵ(P.obs) : SMatrix{ge
 
 
 """
-    guiding terms
+guiding terms
 """
 
 function logp(t, x, type::LNAR_death)
@@ -383,7 +383,7 @@ guiding_term(info, type::pois_death) = (ℓ,t,x) -> x == getv(type.obs) ? 0.0 : 
 
 
 """
-    Forward simulation
+Forward simulation
 
 functions to get the next reaction time cf. section 6 of the paper and to simulate the forward guided process using the δ-method. 
 """
@@ -461,15 +461,10 @@ end
 
 
 """
-    Likelihood computations of a given path. 
+Likelihood computations of a given path. 
 
 Computation of the term h̃(0,x₀)*Ψ(tt, xx), or the log of that term. 
 """
-# finds ℓ such that ℓ.ξ = y-x
-function find_reaction(x, y, P::ChemicalReactionProcess)
-    ℛ = reaction_array(P)
-    return ℛ[findall(ℓ -> ℓ.ξ == y-x, ℛ)][1]
-end
 
 # Expression from Sherlock and Golightly. Should result in the same likelihood, this is just a check. 
 function loglikelihood_SG(tt,xx,GP::TP) where {TP<:Union{LNA, pois}}
