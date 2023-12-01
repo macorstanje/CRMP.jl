@@ -231,6 +231,7 @@ General likelihood computation, only dependent on guiding term, main method used
 """
 likelihood_general_1obs(tt,xx, GP::T, info) where {T<:Guided_Process} = exp(loglikelihood_general_1obs(tt,xx, GP, info))
 
+# finds ℓ such that ℓ.ξ = y-x
 function find_reaction(x, y, P::ChemicalReactionProcess)
     ℛ = reaction_array(P)
     return ℛ[findall(ℓ -> ℓ.ξ == y-x, ℛ)][1]
